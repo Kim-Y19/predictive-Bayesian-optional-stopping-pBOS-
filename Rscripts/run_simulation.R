@@ -1,17 +1,19 @@
 # Load necessary libraries
-library("readxl")
-library("gam")
-library("progress")
+suppressPackageStartupMessages({
+  library(readxl)
+  library(gam)
+  library(progress)
+})
 
 # Source external R script
 source("Rscripts/pBOS.R")
 
 # Define file name and load data
 file_name <- "central_informative_prior_statisticstandard"
-load(paste("Data/", file_name, ".RData", sep = ""))
+load(file.path("Data", paste0(file_name, ".RData")))
 
 # Define parameters
-groups_of_data <- 400
+groups_of_data <- 40
 input <- expand.grid(
   pre_defined_ci = as.numeric(pre_defined_ci),
   tolerance_level = seq(0, 1, 0.1),
@@ -19,8 +21,7 @@ input <- expand.grid(
 )
 
 # Initialize result list and progress bar
-result <- replicate(length(input$pre_defined_ci), data.frame())
-index <- 0
+result <- vector("list", length(input$pre_defined_ci))
 pb <- progress_bar$new(
   format = "[:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]",
   total = length(input$pre_defined_ci),
@@ -28,13 +29,9 @@ pb <- progress_bar$new(
 )
 
 # Main loop to process data
-for (i in 1:length(input$pre_defined_ci)) {
+for (i in seq_along(input$pre_defined_ci)) {
   gc()  # Garbage collection to free up memory
-  index <- index + 1
   pb$tick()  # Update progress bar
-  
-  # Define file path for saving figures
-  # file_path <- file.path(paste("Figures/", file_name, sep = ""), paste0("Figure", index, ".jpeg"))
   
   # Call pBOS function with parameters
   res <- pBOS(
@@ -45,7 +42,7 @@ for (i in 1:length(input$pre_defined_ci)) {
     groups_of_data = groups_of_data,  # Number of data groups
     MaxDatainfuture = max_sample_resource,  # Maximum data in future
     tolerance_level = input$tolerance_level[i],  # Tolerance level
-    Nmin = 3,  # Minimum sample size for regression model
+    Nmin = input$Nmin_for_regressionmodel[i],  # Minimum sample size for regression model
     nSim = 300  # Number of simulations
   )
   
@@ -54,4 +51,4 @@ for (i in 1:length(input$pre_defined_ci)) {
 }
 
 # Save results for plotting later
-save(result, file = paste("Results/", prior_type, ".RData", sep = ""))
+save(result, file = file.path("Results", paste0(prior_type, ".RData")))

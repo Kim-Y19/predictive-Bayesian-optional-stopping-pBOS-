@@ -45,7 +45,6 @@ pBOS <- function(
   false_select <- sample(na.omit(false_label), n_select)
   combine_true_false <- c(false_select, true_select)
   sum_selected_data_list <- vector("list", groups_of_data)
-  
   # Main loop to process each data group
   for (l in 1:groups_of_data) {
     set.seed(l)
@@ -205,6 +204,38 @@ pBOS <- function(
       ci_data_all[l, i] <- 2 * t_crit * sqrt(phi1 / n1)
     }
   }
+  # Calculate true and false positives/negatives
+  false_positive <- 0
+  true_positive <- 0
+  true_negative <- 0
+  false_negative <- 0
+  true_label <- c()
+
+  for (i in 1:length(final_sample_size)) {
+    if (is.infinite(final_sample_size[i])) {
+      if (ci_data_all[i, Samplesizemax] > pre_defined_ci) {
+        true_negative <- true_negative + 1
+        true_label[i] <- 1
+      } else {
+        false_negative <- false_negative + 1
+        true_label[i] <- 0
+      }
+    } else {
+      if (ci_data_all[i, stop_sample_size[i]] > pre_defined_ci) {
+        false_positive <- false_positive + 1
+        true_label[i] <- 0
+      } else {
+        true_positive <- true_positive + 1
+        true_label[i] <- 1
+      }
+    }
+  }
+
+  false_positive_rate <- false_positive / (false_positive + true_negative)
+  false_negative_rate <- false_negative / length(final_sample_size)
+  true_positive_rate <- true_positive / (true_positive + false_negative)
+  true_negative_rate <- true_negative / length(final_sample_size)
+  
   # Return results
   results <- list(
     Nmin = Nmin,
@@ -213,7 +244,11 @@ pBOS <- function(
     groups_of_data = groups_of_data,
     ci_data_all = ci_data_all,
     final_sample_size = final_sample_size,
-    stop_sample_size = stop_sample_size
+    stop_sample_size = stop_sample_size,
+    true_positive_rate = true_positive_rate,
+    false_positive_rate = false_positive_rate,
+    false_negative_rate = false_negative_rate,
+    true_negative_rate = true_negative_rate
   )
   return(results)
 }
