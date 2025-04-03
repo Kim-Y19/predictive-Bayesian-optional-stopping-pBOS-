@@ -1,50 +1,57 @@
-source("Rscripts/BOS.R")
+# Load necessary libraries
 library("readxl")
 library("gam")
 library("progress")
 
-load("Data/central_informative_prior_statisticstandard.RData")
-groups_of_data = 400
-# group_n = 5
-input <- expand.grid(pre_defined_ci = as.numeric(pre_defined_ci),
-                     tolerance_level = seq(0, 1,0.1),
-                     Nmin_for_regressionmodel = seq(10, 30, 10))
+# Source external R script
+source("Rscripts/pBOS.R")
 
-result= replicate(length(input$pre_defined_ci), data.frame())
-index = 0
-# # Create the directory string
-# output_directory <- paste("result", groupname,
-#                           regressionname,datafile,"_group_n",group_n, sep = "_")
-# # Create the directory if it doesn't exist
-# dir.create(output_directory, showWarnings = FALSE)
-# Set up progress bar.
-pb <- progress_bar$new(format = "[:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]",
-                       result = length(input$pre_defined_ci),
-                       clear = FALSE)      
+# Define file name and load data
+file_name <- "central_informative_prior_statisticstandard"
+load(paste("Data/", file_name, ".RData", sep = ""))
 
-for(i in 1:length(input$pre_defined_ci)){
-    gc()
-    index = index +1
-    pb$tick()
-    #file_path <- file.path(output_directory, paste0("Figure", index, ".jpeg"))
-    res <- BOS(INDATA,
-              experiment_data_groups,
-              prior,
-                             # Regression = regression_setting,
-                             # regression_model_choice =1,
-              Samplesizemax = max_sample_resource,
-              pre_defined_ci = input$pre_defined_ci[i],
-              groups_of_data = groups_of_data,
-              MaxDatainfuture = max_sample_resource,
-              tolerance_level = input$tolerance_level[i],
-              Nmin = 3,
-              Nmin_for_regressionmodel = input$Nmin_for_regressionmodel[i],
-              nSim = 300,
-              n_picks = 1e5,
-              index = index,
-              file_path)
-    print(paste("Loop",i,"is finished"))
-    result[[i]] <- res
+# Define parameters
+groups_of_data <- 400
+input <- expand.grid(
+  pre_defined_ci = as.numeric(pre_defined_ci),
+  tolerance_level = seq(0, 1, 0.1),
+  Nmin_for_regressionmodel = seq(10, 30, 10)
+)
+
+# Initialize result list and progress bar
+result <- replicate(length(input$pre_defined_ci), data.frame())
+index <- 0
+pb <- progress_bar$new(
+  format = "[:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]",
+  total = length(input$pre_defined_ci),
+  clear = FALSE
+)
+
+# Main loop to process data
+for (i in 1:length(input$pre_defined_ci)) {
+  gc()  # Garbage collection to free up memory
+  index <- index + 1
+  pb$tick()  # Update progress bar
+  
+  # Define file path for saving figures
+  # file_path <- file.path(paste("Figures/", file_name, sep = ""), paste0("Figure", index, ".jpeg"))
+  
+  # Call pBOS function with parameters
+  res <- pBOS(
+    simulated_data_list,  # List of simulated data
+    prior,  # Prior information
+    Samplesizemax = max_sample_resource,  # Maximum sample size
+    pre_defined_ci = input$pre_defined_ci[i],  # Pre-defined credible interval
+    groups_of_data = groups_of_data,  # Number of data groups
+    MaxDatainfuture = max_sample_resource,  # Maximum data in future
+    tolerance_level = input$tolerance_level[i],  # Tolerance level
+    Nmin = 3,  # Minimum sample size for regression model
+    nSim = 300  # Number of simulations
+  )
+  
+  print(paste("Loop", i, "is finished"))  # Print loop completion message
+  result[[i]] <- res  # Save result
 }
+
 # Save results for plotting later
-save(result, file = paste("Results/",prior_type, ".RData", sep = ""))
+save(result, file = paste("Results/", prior_type, ".RData", sep = ""))
