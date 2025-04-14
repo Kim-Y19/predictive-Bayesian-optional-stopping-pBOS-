@@ -4,7 +4,7 @@ by Xiaomi Yang, Carol Flannagan and Jonas Bärgman (https://arxiv.org/abs/2503.0
 
 Contents
 * Rscripts: Codes used to generate simulation data, run simulation and post analysis.
-* Data: folder to contain generated simulation data.
-* Results: folder to contain generated results.
-* Figures: folder to contain figures analysed based on the results.
+* Data: Contain generated simulation data.
+* Results: Contain generated results.
+* Figures: Contain figures analysed based on the results.
 
