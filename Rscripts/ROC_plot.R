@@ -9,7 +9,7 @@ library(cowplot)
 library(ggpubr)
 
 # Load the data
-file_load_name <- "result_20241026_statistics_group400_Regressionyes_prior_var1_offsetmean_0_n0_10_v0_10_centermuTRUE_centervarTRUE_informativemuTRUE_informativevarTRUE_weaklyFALSE_statisticstandard_NEW1025__group_n_1"
+file_load_name <- "central_informative_prior_200groups_300rep"
 load(paste0("Results/", file_load_name, ".RData"))
 
 # Set color palette and line types
@@ -39,12 +39,12 @@ theme_update(
   plot.margin = margin(t = -0.3, r = 5.5, b = 5.5, l = 5, unit = "points")
 )
 
-# Extract data from the 'total' list
-df <- do.call(rbind, lapply(total, function(x) {
+# Extract data from the 'result' list
+df <- do.call(rbind, lapply(result, function(x) {
   data.frame(
     pre_defined_ci = x$pre_defined_ci,
-    power_defined = x$power_defined,
-    min_samplesize_for_regressionmodel = x$min_samplesize_for_regressionmodel,
+    tolerance_level = x$tolerance_level,
+    Nmin = x$Nmin,
     true_positive_rate = x$true_positive_rate,
     false_positive_rate = x$false_positive_rate,
     true_negative_rate = x$true_negative_rate,
@@ -58,14 +58,14 @@ df$CI_percentile <- factor(df$pre_defined_ci, levels = ci_summary, labels = c(0.
 file_path <- "Figures/"
 
 # Convert columns to factors for plotting
-df$min_samplesize_for_regressionmodel <- as.factor(df$min_samplesize_for_regressionmodel)
+df$Nmin <- as.factor(df$Nmin)
 df$pre_defined_ci <- as.factor(df$pre_defined_ci)
 df$CI_percentile <- as.factor(df$CI_percentile)
 
 # Function to create ROC plot
 create_roc_plot <- function(data, ci_percentile, title, show_legend = FALSE) {
   plot <- ggplot(data = data %>% filter(CI_percentile == ci_percentile) %>% arrange(false_positive_rate, true_positive_rate), 
-                 aes(x = false_positive_rate, y = true_positive_rate, color = min_samplesize_for_regressionmodel, linetype = min_samplesize_for_regressionmodel), lwd = 2) +
+                 aes(x = false_positive_rate, y = true_positive_rate, color = Nmin, linetype = Nmin), lwd = 2) +
     geom_line(lwd = 1.5) +
     geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dashed") +
     xlab("False positive rate") +

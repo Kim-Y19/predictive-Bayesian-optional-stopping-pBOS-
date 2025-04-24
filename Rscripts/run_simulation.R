@@ -13,7 +13,8 @@ file_name <- "central_informative_prior_statisticstandard"
 load(file.path("Data", paste0(file_name, ".RData")))
 
 # Define parameters
-groups_of_data <- 40
+groups_of_data <- 200
+
 input <- expand.grid(
   pre_defined_ci = as.numeric(pre_defined_ci),
   tolerance_level = seq(0, 1, 0.1),
@@ -42,7 +43,8 @@ for (i in seq_along(input$pre_defined_ci)) {
     groups_of_data = groups_of_data,  # Number of data groups
     MaxDatainfuture = max_sample_resource,  # Maximum data in future
     tolerance_level = input$tolerance_level[i],  # Tolerance level
-    Nmin = input$Nmin_for_regressionmodel[i],  # Minimum sample size for regression model
+    Nmin = input$Nmin_for_regressionmodel[i],  # Minimum sample size for pBOS
+    min_samplesize_for_regressionmodel = 3, #minimum sample size for regression model input
     nSim = 300  # Number of simulations
   )
   
@@ -51,4 +53,4 @@ for (i in seq_along(input$pre_defined_ci)) {
 }
 
 # Save results for plotting later
-save(result, file = file.path("Results", paste0(prior_type, ".RData")))
+save(result, file = file.path("Results", paste0(prior_type, "_test.RData")))

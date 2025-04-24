@@ -7,7 +7,7 @@ library(cowplot)
 library(ggpubr)
 
 # Load the data
-file_load_name <- "result_20241026_statistics_group400_Regressionyes_prior_var1_offsetmean_0_n0_10_v0_10_centermuTRUE_centervarTRUE_informativemuTRUE_informativevarTRUE_weaklyFALSE_statisticstandard_NEW1025__group_n_1"
+file_load_name <- "central_informative_prior_200groups_300rep"
 load(paste0("Results/", file_load_name, ".RData"))
 
 # Set color palette and line types
@@ -41,21 +41,21 @@ theme_update(
 )
 
 # Initialize variables
-total_length <- length(total[[1]]$final_sample_size)
-column_names <- c("pre_defined_ci", "power_defined", "min_samplesize_for_regressionmodel", "total_cost_benefit", "ci_percentile", "true_rate", "true_rate2", "propostion", "base_cost_benefit", "run_all_experiments_base", "propostion2", "total_cost_benefit_per_experiment")
+total_length <- length(result[[1]]$final_sample_size)
+column_names <- c("pre_defined_ci", "tolerance_level", "Nmin", "total_cost_benefit", "ci_percentile", "true_rate", "true_rate2", "propostion", "base_cost_benefit", "run_all_experiments_base", "propostion2", "total_cost_benefit_per_experiment")
 benefit_value <- 50  # The benefit for reaching the goal
 p = 0 # penalty
 
 # Loop through benefit values
 for (cost_index in 1:length(benefit_value)) {
   b <- benefit_value[cost_index]
-  cost_benefit_df <- data.frame(matrix(ncol = length(column_names), nrow = length(total)))
+  cost_benefit_df <- data.frame(matrix(ncol = length(column_names), nrow = length(result)))
   colnames(cost_benefit_df) <- column_names
-  pre_defined_ci_all <- sapply(total, function(x) unique(x$pre_defined_ci))
+  pre_defined_ci_all <- sapply(result, function(x) unique(x$pre_defined_ci))
   
-  # Loop through total list
-  for (loop_index in 1:length(total)) {
-    tt <- total[[loop_index]]
+  # Loop through result list
+  for (loop_index in 1:length(result)) {
+    tt <- result[[loop_index]]
     Samplesizemax <- 50
     true_positive <- false_positive <- false_negative <- true_negative <- 0
     true_label <- cost <- benefit <- penalty <- rep(0, length(tt$final_sample_size))
@@ -129,8 +129,8 @@ for (cost_index in 1:length(benefit_value)) {
     
     cost_benefit_df$total_cost_benefit[loop_index] <- total_cost_benefit
     cost_benefit_df$pre_defined_ci[loop_index] <- tt$pre_defined_ci
-    cost_benefit_df$power_defined[loop_index] <- tt$power_defined
-    cost_benefit_df$min_samplesize_for_regressionmodel[loop_index] <- tt$min_samplesize_for_regressionmodel
+    cost_benefit_df$tolerance_level[loop_index] <- tt$tolerance_level
+    cost_benefit_df$Nmin[loop_index] <- tt$Nmin
     cost_benefit_df$ci_percentile[loop_index] <- ci_percentile
     cost_benefit_df$total_cost_benefit_per_experiment[loop_index] <- total_cost_benefit_per_experiment
     
@@ -148,7 +148,7 @@ for (cost_index in 1:length(benefit_value)) {
   get_baseline_bayesianstop <- numeric(length(unique(cost_benefit_df$pre_defined_ci)))
   for (i in unique(cost_benefit_df$pre_defined_ci)) {
     gg_count <- gg_count + 1
-    get_baseline_bayesianstop[gg_count] <- cost_benefit_df[cost_benefit_df$pre_defined_ci == i & cost_benefit_df$power_defined == 0.0,]$total_cost_benefit[1]
+    get_baseline_bayesianstop[gg_count] <- cost_benefit_df[cost_benefit_df$pre_defined_ci == i & cost_benefit_df$tolerance_level == 0.0,]$total_cost_benefit[1]
     cost_benefit_df[cost_benefit_df$pre_defined_ci == i,]$base_cost_benefit <- get_baseline_bayesianstop[gg_count]
   }
   
@@ -159,12 +159,12 @@ for (cost_index in 1:length(benefit_value)) {
   }
   
   # Plotting
-  group_Nmin <- unique(cost_benefit_df$min_samplesize_for_regressionmodel)
-  cost_benefit_df$min_samplesize_for_regressionmodel <- factor(cost_benefit_df$min_samplesize_for_regressionmodel, levels = group_Nmin)
+  group_Nmin <- unique(cost_benefit_df$Nmin)
+  cost_benefit_df$Nmin <- factor(cost_benefit_df$Nmin, levels = group_Nmin)
   
   plot_cost_benefit <- function(data, ci_percentile, title) {
-    ggplot(data = data[data$ci_percentile == ci_percentile,], aes(x = power_defined, y = propostion, color = min_samplesize_for_regressionmodel, linetype = min_samplesize_for_regressionmodel)) +
-      geom_line(aes(linetype = min_samplesize_for_regressionmodel, color = min_samplesize_for_regressionmodel), lwd = 1.5) +
+    ggplot(data = data[data$ci_percentile == ci_percentile,], aes(x = tolerance_level, y = propostion, color = Nmin, linetype = Nmin)) +
+      geom_line(aes(linetype = Nmin, color = Nmin), lwd = 1.5) +
       geom_hline(aes(yintercept = 0, linetype = "BOS", color = "BOS"), lwd = 1.5, show.legend = TRUE) +
       geom_hline(aes(yintercept = unique(data[data$ci_percentile == ci_percentile,]$propostion2), linetype = "Fixed sample size", color = "Fixed sample size"), lwd = 1.5, show.legend = TRUE) +
       scale_color_manual(name = "Nmin", values = c("10" = colors[1], "20" = colors[2], "30" = colors[3], "BOS" = "gray", "Fixed sample size" = "gray")) +

@@ -1,5 +1,5 @@
 # Set parameters
-groups_of_data <- 1e6  # Number of groups of data to simulate
+groups_of_data <- 1e5  # Number of groups of data to simulate
 max_sample_resource <- 50  # Maximum sample size for each group
 prior_type <- "central_informative_prior"  # Type of prior to use
 # Define prior based on prior_type

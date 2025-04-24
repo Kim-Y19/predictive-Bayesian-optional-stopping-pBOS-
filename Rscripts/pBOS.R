@@ -6,7 +6,8 @@ pBOS <- function(
     groups_of_data = 100,  # Number of data groups
     MaxDatainfuture = 100,  # Maximum data in future
     tolerance_level = 1,  # Tolerance level
-    Nmin = 10,  # Minimum sample size for regression model
+    Nmin = 10,  # Minimum sample size for pBOS
+    min_samplesize_for_regressionmodel = 3, #minimum sample size for regression model input
     nSim = 1000  # Number of simulations
 ) {
   # Extract prior parameters
@@ -17,43 +18,47 @@ pBOS <- function(
   
   # Set seed for reproducibility
   set.seed(1)
+  # mean_theta = v0/2*(2/(v0*phi0))
+  # theta <- rgamma(10e5, shape = v0/2, scale  = 2/(v0*phi0))  # Generate gamma-distributed values
+  # mu <- rnorm(10e5, mean = mu0, sd = sqrt(1/(n0* theta)))  # Generate normal-distributed values
+  # phi = 1/theta
   
   # Initialize matrices and lists for storing results
   proportion_ci_pred_reaches <- matrix(nrow = groups_of_data, ncol = Samplesizemax)
-  final_sample_size <- numeric(groups_of_data)
-  stop_sample_size <- numeric(groups_of_data)
+  final_sample_size <- c()
+  stop_sample_size <- c()
   ci_predited_withpower_at_i_samplesize <- matrix(nrow = groups_of_data, ncol = MaxDatainfuture)
   ci_data <- matrix(nrow = groups_of_data, ncol = MaxDatainfuture)
-  false_label <- numeric(groups_of_data)
-  true_label <- numeric(groups_of_data)
+  false_label <- c()
+  true_label <- c()
   
   # Classify data groups based on predefined CI
   for (l in 1:length(simulated_data_list)) {
-    if (any(!is.na(ci_data_all[l,]) & ci_data_all[l,] < pre_defined_ci)) {
+    if(any(!is.na(ci_data_all[l,]) & ci_data_all[l,] < pre_defined_ci )){
       false_label[l] <- l
     } else {
       true_label[l] <- l
     }
   }
   
-  ci_data_all <- matrix(nrow = groups_of_data, ncol = MaxDatainfuture)
   ratio_generated_data_variance_original_data_variance <- matrix(nrow = groups_of_data, ncol = MaxDatainfuture)
   n_select <- groups_of_data / 2
-  
+
   # Randomly select true and false labels
   true_select <- sample(na.omit(true_label), n_select)
   false_select <- sample(na.omit(false_label), n_select)
   combine_true_false <- c(false_select, true_select)
   sum_selected_data_list <- vector("list", groups_of_data)
+  ci_data_all <- matrix(nrow = groups_of_data, ncol = MaxDatainfuture)
   # Main loop to process each data group
   for (l in 1:groups_of_data) {
     set.seed(l)
     sum_selected_data_list[[l]] <- simulated_data_list[[combine_true_false[l]]]
     realdata <- simulated_data_list[[combine_true_false[l]]]
     data_to_generate <- vector("list", nSim)
-    theta_g <- numeric(nSim)
-    mu_g <- numeric(nSim)
-    phi_g <- numeric(nSim)
+    theta_g = c()
+    mu_g = c()
+    phi_g = c()
     xg_ba <- matrix(nrow = MaxDatainfuture, ncol = nSim)
     sg <- matrix(nrow = MaxDatainfuture, ncol = nSim)
     mug_post <- matrix(nrow = MaxDatainfuture, ncol = nSim)
@@ -82,6 +87,7 @@ pBOS <- function(
       
       # Check if CI length meets the predefined threshold
       if (!is.na(ci_data[l, i]) & ci_data[l, i] <= pre_defined_ci) {
+        print("data has reached the precision target")
         final_sample_size[l] <- i
         stop_sample_size[l] <- i
         break
@@ -106,11 +112,11 @@ pBOS <- function(
         # Regression model
         if (i >= Nmin) {
           percentile_offset <- quantile(ci_g_post[MaxDatainfuture, ], tolerance_level) - median(ci_g_post[MaxDatainfuture, ])
-          real_data_ci <- numeric(i * MaxDatainfuture)
-          num_real_data <- numeric(i * MaxDatainfuture)
-          num_predicted_data <- numeric(i * MaxDatainfuture)
-          median_predicted_ci <- numeric(i * MaxDatainfuture)
-          percentile_predicted_ci <- numeric(i * MaxDatainfuture)
+          real_data_ci <- c()
+          num_real_data <- c()
+          num_predicted_data <- c()
+          median_predicted_ci <- c()
+          percentile_predicted_ci <- c()
           g <- 1
           for (p in 1:i) {
             for (j in 1:MaxDatainfuture) {
@@ -137,18 +143,21 @@ pBOS <- function(
           data <- all_data[complete.cases(all_data), ]
           sorted_data <- data[order(data$x2, data$x3), ]
           train_group <- sorted_data[(sorted_data$x2 <= i & 
-                                        sorted_data$x3 >= Nmin & 
+                                        sorted_data$x3 >= min_samplesize_for_regressionmodel & 
                                         sorted_data$x3 <= i & 
-                                        sorted_data$x2 >= Nmin), ]
+                                        sorted_data$x2 >= min_samplesize_for_regressionmodel), ]
           test_group <- all_data[all_data$x2 == i, ]
           
           # Initialize an empty list to store the predictions
           model <- lm(y ~ x1 + x2 + x3, data = train_group)
-          
+          predictions = predict(model,newdata=test_group)
+          test_group$predictions = predictions
           # Adjust CI based on predictions
-          if (length(test_group[test_group$x3 == MaxDatainfuture, ]$predictions) > 0 && 
-              !is.na(test_group[test_group$x3 == MaxDatainfuture, ]$predictions) && 
-              test_group[test_group$x3 == MaxDatainfuture, ]$predictions > 0) {
+          # if (length(test_group[test_group$x3 == MaxDatainfuture, ]$predictions) > 0 && 
+          #     !is.na(test_group[test_group$x3 == MaxDatainfuture, ]$predictions) && 
+          #     test_group[test_group$x3 == MaxDatainfuture, ]$predictions > 0) 
+          if(test_group[test_group$x3 == MaxDatainfuture,]$predictions>0)
+            {
             ecdf_function <- ecdf(ci_g_post[MaxDatainfuture, ] + 
                                     sqrt(1 / test_group[test_group$x3 == MaxDatainfuture, ]$predictions) - 
                                     median(ci_g_post[MaxDatainfuture, ]))
@@ -158,24 +167,25 @@ pBOS <- function(
             ecdf_function <- ecdf(ci_g_post[MaxDatainfuture, ])
             ci_predited_withpower_at_i_samplesize[l, i] <- quantile(ci_g_post[MaxDatainfuture, ], tolerance_level)
           }
-          
           # Adjust CI based on tolerance level
           if (tolerance_level == 0) {
             ci_predited_withpower_at_i_samplesize[l, i] <- 0
           } else if (tolerance_level == 1) {
             ci_predited_withpower_at_i_samplesize[l, i] <- 1000
-          } else {
-            ci_predited_withpower_at_i_samplesize[l, i] <- NA
-          }
+          } 
+          # else {
+          #   ci_predited_withpower_at_i_samplesize[l, i] <- NA
+          # }
           
           # Check if experiments have reached the initial decision sample size
           if (i < Nmin) {
-            # Experiments have not reached the initial decision sample size
+            # Experiments have not reached the initial pBOS stop decision sample size
           } else if (!is.na(ci_predited_withpower_at_i_samplesize[l, i]) & ci_predited_withpower_at_i_samplesize[l, i] > pre_defined_ci) {
             final_sample_size[l] <- Inf
             stop_sample_size[l] <- i
             break
           } else if (i == Samplesizemax) {
+            # browser()
             final_sample_size[l] <- i
             stop_sample_size[l] <- i
           }
@@ -202,8 +212,10 @@ pBOS <- function(
       df <- n - 1
       t_crit <- qt(1 - alpha / 2, df)
       ci_data_all[l, i] <- 2 * t_crit * sqrt(phi1 / n1)
+      
     }
   }
+
   # Calculate true and false positives/negatives
   false_positive <- 0
   true_positive <- 0
@@ -235,7 +247,7 @@ pBOS <- function(
   false_negative_rate <- false_negative / length(final_sample_size)
   true_positive_rate <- true_positive / (true_positive + false_negative)
   true_negative_rate <- true_negative / length(final_sample_size)
-  
+  # browser()
   # Return results
   results <- list(
     Nmin = Nmin,
